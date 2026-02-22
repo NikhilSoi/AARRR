@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AAARRR Funnel Diagnostics — Growth Marketing Simulation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Fraunces:wght@700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<style>
+:root {
+  --navy:   #0a1628;
+  --navy2:  #0f2044;
+  --panel:  #111c35;
+  --panel2: #162040;
+  --border: #1e3056;
+  --blue:   #2563eb;
+  --bright: #3b82f6;
+  --teal:   #0d9488;
+  --amber:  #d97706;
+  --coral:  #dc2626;
+  --green:  #16a34a;
+  --purple: #7c3aed;
+  --orange: #ea580c;
+  --white:  #f0f6ff;
+  --muted:  #64748b;
+  --dim:    #334155;
+  --good:   #22c55e;
+  --bad:    #ef4444;
+  --warn:   #f59e0b;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Space Grotesk', sans-serif;
+  background: var(--navy);
+  color: var(--white);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background-image:
+    linear-gradient(rgba(37,99,235,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37,99,235,0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events:none; z-index:0;
+}
+.screen { display:none; position:relative; z-index:1; }
+.screen.active { display:flex; flex-direction:column; min-height:100vh; }
+
+/* START */
+#start-screen { align-items:center; justify-content:center; padding:40px 20px; text-align:center; }
+.logo-mark { font-family:'Fraunces',serif; font-size:11px; letter-spacing:4px; text-transform:uppercase; color:var(--teal); margin-bottom:32px; }
+.hero-title { font-family:'Fraunces',serif; font-size:clamp(42px,6vw,72px); font-weight:700; line-height:1.05; margin-bottom:16px; background:linear-gradient(135deg,#f0f6ff 30%,#60a5fa 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-sub { font-size:16px; color:#94a3b8; max-width:520px; line-height:1.6; margin-bottom:48px; }
+.funnel-preview { display:flex; flex-direction:column; align-items:center; gap:3px; margin-bottom:48px; }
+.fp-bar { height:34px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; letter-spacing:2px; text-transform:uppercase; }
+.rules-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; max-width:640px; margin-bottom:44px; }
+.rule-card { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px; text-align:left; }
+.rule-icon { font-size:20px; margin-bottom:8px; }
+.rule-title { font-size:12px; font-weight:700; color:var(--bright); margin-bottom:4px; }
+.rule-body { font-size:11px; color:#94a3b8; line-height:1.5; }
+.btn-start { background:var(--blue); color:white; border:none; padding:16px 48px; font-family:'Space Grotesk',sans-serif; font-size:16px; font-weight:700; border-radius:8px; cursor:pointer; letter-spacing:0.5px; transition:all 0.2s; box-shadow:0 0 30px rgba(37,99,235,0.4); }
+.btn-start:hover { background:#1d4ed8; transform:translateY(-2px); box-shadow:0 0 40px rgba(37,99,235,0.6); }
+
+/* GAME */
+#game-screen { padding:0; }
+.game-header { display:flex; align-items:center; justify-content:space-between; padding:14px 28px; background:var(--panel); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:100; }
+.gh-left { display:flex; align-items:center; gap:16px; }
+.round-badge { background:var(--blue); font-size:11px; font-weight:700; letter-spacing:2px; padding:4px 12px; border-radius:20px; text-transform:uppercase; }
+.round-title { font-size:14px; font-weight:600; color:#cbd5e1; }
+.gh-right { display:flex; align-items:center; gap:24px; }
+.score-display { font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:600; color:var(--good); }
+.score-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+.timer-wrap { text-align:center; }
+.timer-display { font-family:'JetBrains Mono',monospace; font-size:24px; font-weight:700; transition:color 0.3s; }
+.timer-display.warn { color:var(--warn); }
+.timer-display.danger { color:var(--bad); animation:pulse 0.5s ease infinite alternate; }
+@keyframes pulse { to { opacity:0.5; } }
+
+.game-body { display:grid; grid-template-columns:320px 1fr; flex:1; min-height:calc(100vh - 61px); }
+
+/* Funnel panel */
+.funnel-panel { background:var(--panel); border-right:1px solid var(--border); padding:24px 20px; display:flex; flex-direction:column; }
+.funnel-panel-title { font-size:10px; font-weight:700; letter-spacing:3px; text-transform:uppercase; color:var(--muted); margin-bottom:20px; }
+.funnel-stages { display:flex; flex-direction:column; gap:8px; flex:1; }
+.funnel-stage { border-radius:8px; overflow:hidden; border:1px solid var(--border); transition:all 0.4s ease; }
+.funnel-stage.leak { border-color:var(--bad); animation:leak-glow 1.5s ease infinite alternate; }
+@keyframes leak-glow { from { box-shadow:0 0 8px rgba(239,68,68,0.2); } to { box-shadow:0 0 20px rgba(239,68,68,0.5); } }
+.funnel-stage.fixed { border-color:var(--good); box-shadow:0 0 12px rgba(34,197,94,0.2); }
+.stage-header { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; }
+.stage-name { font-size:11px; font-weight:700; letter-spacing:2px; text-transform:uppercase; }
+.stage-value { font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:600; }
+.stage-bar-wrap { padding:0 12px 10px; }
+.stage-bar-bg { height:6px; border-radius:3px; background:rgba(255,255,255,0.07); }
+.stage-bar-fill { height:6px; border-radius:3px; transition:width 0.8s cubic-bezier(0.34,1.56,0.64,1); }
+.stage-meta { display:flex; align-items:center; justify-content:space-between; padding:0 12px 8px; }
+.stage-rate { font-size:11px; color:var(--muted); }
+.leak-arrow { text-align:center; font-size:18px; color:var(--bad); animation:bounce-down 1s ease infinite; margin:-4px 0; }
+@keyframes bounce-down { 0%,100% { transform:translateY(0); } 50% { transform:translateY(4px); } }
+
+/* Scenario panel */
+.scenario-panel { padding:28px 32px; display:flex; flex-direction:column; gap:20px; overflow-y:auto; }
+.scenario-context { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:20px 24px; }
+.ctx-eyebrow { font-size:10px; font-weight:700; letter-spacing:3px; text-transform:uppercase; color:var(--teal); margin-bottom:8px; }
+.ctx-title { font-family:'Fraunces',serif; font-size:22px; font-weight:700; margin-bottom:8px; line-height:1.2; }
+.ctx-body { font-size:13px; color:#94a3b8; line-height:1.6; }
+.signal-row { display:flex; align-items:center; gap:12px; margin-top:14px; flex-wrap:wrap; }
+.signal-chip { display:flex; align-items:center; gap:8px; padding:8px 14px; border-radius:8px; font-size:13px; font-weight:600; }
+.signal-chip.high { background:rgba(22,163,74,0.15); border:1px solid rgba(22,163,74,0.4); color:var(--good); }
+.signal-chip.low  { background:rgba(239,68,68,0.15);  border:1px solid rgba(239,68,68,0.4);  color:var(--bad); }
+.signal-arrow { font-size:20px; color:var(--muted); }
+.section-label { font-size:10px; font-weight:700; letter-spacing:3px; text-transform:uppercase; color:var(--muted); margin-bottom:12px; }
+.leak-options { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.fix-options { display:flex; flex-direction:column; gap:10px; }
+.option-card { background:var(--panel); border:2px solid var(--border); border-radius:10px; padding:14px 16px; cursor:pointer; transition:all 0.2s; text-align:left; }
+.option-card:hover { border-color:var(--bright); background:rgba(59,130,246,0.08); transform:translateX(3px); }
+.option-card.selected { border-color:var(--bright); background:rgba(59,130,246,0.12); }
+.option-card.correct { border-color:var(--good); background:rgba(34,197,94,0.12); animation:correct-flash 0.4s ease; }
+.option-card.wrong   { border-color:var(--bad);  background:rgba(239,68,68,0.1);   animation:wrong-shake  0.4s ease; }
+@keyframes correct-flash { 0%,100% { transform:scale(1); } 50% { transform:scale(1.01); } }
+@keyframes wrong-shake   { 0%,100% { transform:translateX(0); } 25% { transform:translateX(-6px); } 75% { transform:translateX(6px); } }
+.option-letter { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; background:var(--dim); font-size:11px; font-weight:700; margin-bottom:6px; float:left; margin-right:10px; }
+.option-text { font-size:13px; line-height:1.5; color:#cbd5e1; }
+.option-reason { font-size:11px; color:var(--muted); margin-top:4px; line-height:1.4; display:none; }
+.option-card.correct .option-reason, .option-card.wrong .option-reason { display:block; }
+.option-card.correct .option-reason { color:var(--good); }
+.option-card.wrong   .option-reason { color:var(--bad); }
+.btn-confirm { background:var(--blue); color:white; border:none; padding:14px 32px; font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:700; border-radius:8px; cursor:pointer; transition:all 0.2s; width:100%; margin-top:4px; }
+.btn-confirm:hover:not(:disabled) { background:#1d4ed8; }
+.btn-confirm:disabled { opacity:0.35; cursor:not-allowed; }
+.feedback-banner { border-radius:10px; padding:16px 20px; display:none; font-size:13px; line-height:1.6; }
+.feedback-banner.show { display:block; }
+.feedback-banner.correct { background:rgba(34,197,94,0.12); border:1px solid rgba(34,197,94,0.3); }
+.feedback-banner.wrong   { background:rgba(239,68,68,0.1);  border:1px solid rgba(239,68,68,0.3); }
+.feedback-banner.timeout { background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.3); }
+.feedback-head { font-size:14px; font-weight:700; margin-bottom:6px; }
+.feedback-banner.correct .feedback-head { color:var(--good); }
+.feedback-banner.wrong   .feedback-head { color:var(--bad); }
+.feedback-banner.timeout .feedback-head { color:var(--warn); }
+.btn-next { background:var(--panel); color:var(--white); border:1px solid var(--border); padding:12px 28px; font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:600; border-radius:8px; cursor:pointer; transition:all 0.2s; width:100%; margin-top:4px; display:none; }
+.btn-next.show { display:block; }
+.btn-next:hover { border-color:var(--bright); color:var(--bright); }
+.progress-dots { display:flex; gap:6px; align-items:center; }
+.pdot { width:8px; height:8px; border-radius:50%; background:var(--dim); transition:all 0.3s; }
+.pdot.done    { background:var(--good); }
+.pdot.current { background:var(--bright); transform:scale(1.3); }
+.pdot.failed  { background:var(--bad); }
+.phase-indicator { display:flex; gap:8px; margin-bottom:4px; }
+.phase-pip { height:3px; flex:1; border-radius:2px; background:var(--dim); transition:background 0.3s; }
+.phase-pip.active { background:var(--blue); }
+.phase-pip.done   { background:var(--good); }
+.hint-box { background:rgba(13,148,136,0.1); border:1px solid rgba(13,148,136,0.3); border-radius:8px; padding:10px 14px; font-size:12px; color:#5eead4; line-height:1.5; }
+
+/* RESULTS */
+#results-screen { align-items:center; justify-content:center; padding:40px 20px; text-align:center; }
+.result-title { font-family:'Fraunces',serif; font-size:clamp(36px,5vw,60px); font-weight:700; margin-bottom:8px; }
+.result-sub { font-size:16px; color:#94a3b8; margin-bottom:36px; }
+.score-big { font-family:'JetBrains Mono',monospace; font-size:clamp(60px,10vw,96px); font-weight:700; color:var(--bright); line-height:1; margin-bottom:4px; }
+.score-max { font-size:14px; color:var(--muted); margin-bottom:32px; }
+.grade-badge { display:inline-block; padding:8px 24px; border-radius:30px; font-size:14px; font-weight:700; letter-spacing:2px; text-transform:uppercase; margin-bottom:40px; }
+.results-breakdown { display:flex; flex-direction:column; gap:8px; max-width:560px; width:100%; margin-bottom:40px; }
+.rb-row { display:flex; align-items:center; justify-content:space-between; background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:12px 16px; }
+.rb-label { font-size:13px; color:#cbd5e1; text-align:left; flex:1; }
+.rb-score { font-family:'JetBrains Mono',monospace; font-size:14px; font-weight:600; }
+.rb-score.good { color:var(--good); }
+.rb-score.bad  { color:var(--bad); }
+.rb-score.warn { color:var(--warn); }
+.btn-restart { background:var(--blue); color:white; border:none; padding:14px 44px; font-family:'Space Grotesk',sans-serif; font-size:15px; font-weight:700; border-radius:8px; cursor:pointer; transition:all 0.2s; box-shadow:0 0 30px rgba(37,99,235,0.35); }
+.btn-restart:hover { background:#1d4ed8; transform:translateY(-2px); }
+
+#transition-overlay { position:fixed; inset:0; background:var(--navy); z-index:999; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-size:28px; opacity:0; pointer-events:none; transition:opacity 0.3s; }
+#transition-overlay.show { opacity:1; pointer-events:all; }
+.toast { position:fixed; bottom:24px; right:24px; background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:14px 20px; font-size:13px; z-index:1000; transform:translateY(80px); opacity:0; transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1); max-width:300px; }
+.toast.show { transform:translateY(0); opacity:1; }
+.toast.good-toast { border-color:rgba(34,197,94,0.4); color:var(--good); }
+.toast.bad-toast  { border-color:rgba(239,68,68,0.4);  color:var(--bad); }
+</style>
+</head>
+<body>
+
+<!-- START -->
+<div id="start-screen" class="screen active">
+  <div class="logo-mark">Hult International Business School &middot; Marketing Analytics</div>
+  <h1 class="hero-title">AAARRR Funnel<br>Diagnostics</h1>
+  <p class="hero-sub">Six rounds. Each one hands you a broken funnel. Diagnose the leak, pick the right fix, and watch the numbers respond. Your speed and accuracy determine your score.</p>
+  <div class="funnel-preview" id="funnel-preview"></div>
+  <div class="rules-grid">
+    <div class="rule-card">
+      <div class="rule-icon">&#9201;</div>
+      <div class="rule-title">60 Seconds</div>
+      <div class="rule-body">Each round is timed. Faster correct answers earn more points.</div>
+    </div>
+    <div class="rule-card">
+      <div class="rule-icon">&#127919;</div>
+      <div class="rule-title">Two Phases</div>
+      <div class="rule-body">First identify which stage is leaking. Then choose the right fix.</div>
+    </div>
+    <div class="rule-card">
+      <div class="rule-icon">&#128200;</div>
+      <div class="rule-title">Live Funnel</div>
+      <div class="rule-body">When you pick correctly, the funnel numbers update in real time.</div>
+    </div>
+  </div>
+  <button class="btn-start" onclick="startGame()">Start Simulation &#8594;</button>
+</div>
+
+<!-- GAME -->
+<div id="game-screen" class="screen">
+  <header class="game-header">
+    <div class="gh-left">
+      <span class="round-badge" id="round-badge">Round 1 / 6</span>
+      <span class="round-title" id="round-title"></span>
+    </div>
+    <div class="gh-right">
+      <div>
+        <div class="score-label">Score</div>
+        <div class="score-display" id="score-display">0</div>
+      </div>
+      <div class="progress-dots" id="progress-dots"></div>
+      <div class="timer-wrap">
+        <div class="score-label">Time</div>
+        <div class="timer-display" id="timer-display">60</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="game-body">
+    <aside class="funnel-panel">
+      <div class="funnel-panel-title">Live Funnel Metrics</div>
+      <div class="funnel-stages" id="funnel-stages"></div>
+    </aside>
+
+    <main class="scenario-panel" id="scenario-panel">
+      <div class="scenario-context">
+        <div class="ctx-eyebrow" id="ctx-eyebrow"></div>
+        <div class="ctx-title"   id="ctx-title"></div>
+        <div class="ctx-body"    id="ctx-body"></div>
+        <div class="signal-row"  id="signal-row"></div>
+      </div>
+
+      <div class="phase-indicator">
+        <div class="phase-pip active" id="pip-1"></div>
+        <div class="phase-pip"        id="pip-2"></div>
+      </div>
+
+      <div id="phase1-area">
+        <div class="section-label">Step 1 &mdash; Where is the leak?</div>
+        <div class="hint-box" style="margin-bottom:12px" id="phase1-hint"></div>
+        <div class="leak-options" id="leak-options"></div>
+        <button class="btn-confirm" id="btn-confirm-leak" onclick="confirmLeak()" disabled>Confirm Diagnosis &#8594;</button>
+      </div>
+
+      <div id="phase2-area" style="display:none">
+        <div class="section-label">Step 2 &mdash; What would you do first?</div>
+        <div class="hint-box" style="margin-bottom:12px" id="phase2-hint"></div>
+        <div class="fix-options" id="fix-options"></div>
+        <button class="btn-confirm" id="btn-confirm-fix" onclick="confirmFix()" disabled>Apply Fix &#8594;</button>
+      </div>
+
+      <div class="feedback-banner" id="feedback-banner">
+        <div class="feedback-head" id="feedback-head"></div>
+        <div id="feedback-body"></div>
+      </div>
+
+      <button class="btn-next" id="btn-next" onclick="nextRound()">Next Round &#8594;</button>
+    </main>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div id="results-screen" class="screen">
+  <h1 class="result-title" id="result-title">Simulation Complete</h1>
+  <p class="result-sub" id="result-sub"></p>
+  <div class="score-big" id="result-score">0</div>
+  <div class="score-max" id="result-max"></div>
+  <div class="grade-badge" id="grade-badge"></div>
+  <div class="results-breakdown" id="results-breakdown"></div>
+  <button class="btn-restart" onclick="restartGame()">Play Again &#8594;</button>
+</div>
+
+<div id="transition-overlay"><span id="transition-text">Round complete</span></div>
+<div class="toast" id="toast"></div>
+
+<script>
+var STAGE_COLORS = {
+  Awareness:   "#2563eb",
+  Acquisition: "#0d9488",
+  Activation:  "#d97706",
+  Retention:   "#7c3aed",
+  Revenue:     "#16a34a",
+  Referral:    "#dc2626"
+};
+
+var ROUNDS = [
+  {
+    id: 1,
+    title: "The Leaky Welcome Mat",
+    company: "StyleDrop — online fashion retailer",
+    context: "StyleDrop just ran their biggest paid social campaign of the year. Sessions are up 41% month-on-month and the marketing team is celebrating. But the CFO is worried — revenue has not moved.",
+    signals: [
+      { stage: "Acquisition", level: "HIGH", value: 28400, unit: "sessions" },
+      { stage: "Activation",  level: "LOW",  value: 1136,  unit: "activations" },
+      { stage: "Revenue",     level: "LOW",  value: 284,   unit: "transactions" }
+    ],
+    allStages: [
+      { name: "Awareness",   value: 82000, unit: "impressions",  max: 100000 },
+      { name: "Acquisition", value: 28400, unit: "sessions",     max: 30000  },
+      { name: "Activation",  value: 1136,  unit: "activations",  max: 5000   },
+      { name: "Retention",   value: 390,   unit: "returning",    max: 3000   },
+      { name: "Revenue",     value: 284,   unit: "transactions", max: 2000   },
+      { name: "Referral",    value: 210,   unit: "referrals",    max: 1000   }
+    ],
+    leakStage: "Activation",
+    leakOptions: ["Awareness", "Acquisition", "Activation", "Revenue"],
+    leakHint: "Look at the funnel: Acquisition is very high, but what happens to users immediately after they arrive?",
+    phase1Feedback: {
+      correct: "Exactly. Acquisition is high — the campaign worked. But Activation is down to 4% (1,136 / 28,400). Last month it was 8%. For every 100 new visitors, fewer than 4 are taking any meaningful action. The landing page is failing them.",
+      wrong: "Not quite. Acquisition is the strong signal here — the campaign drove traffic successfully. The problem appears at the next stage. Check the ratio between Acquisition and Activation."
+    },
+    fixOptions: [
+      { letter: "A", text: "Increase paid social budget by 30% to drive more sessions", reason: "Incorrect. More sessions into a broken activation funnel wastes budget. You are filling a leaking bucket.", correct: false },
+      { letter: "B", text: "A/B test the landing page — hero section, CTA, and product images for the paid social audience", reason: "Correct. The paid social audience is arriving but not activating. The landing page is the first point of failure. Test what speaks to this specific audience segment.", correct: true },
+      { letter: "C", text: "Lower prices site-wide by 15% to improve conversion", reason: "Premature. We do not know price is the issue — users are not even reaching the product or cart stage in large enough numbers to test price sensitivity.", correct: false },
+      { letter: "D", text: "Email the entire database to drive repeat visits", reason: "Wrong audience. Activation is a new-user problem. Your email list is largely existing customers. This does not address the leaking welcome mat.", correct: false }
+    ],
+    phase2Hint: "Focus on the transition between arrival and first meaningful action. What might explain why fewer users are activating despite more arriving?",
+    fixFeedback: "The landing page does not match what the paid social audience expected from the ad — a classic message mismatch. The fix is to test variants specifically for this paid audience: different headline, different CTA, product imagery that mirrors what they saw in the ad.",
+    fixedStages: [
+      { name: "Acquisition", value: 28400 },
+      { name: "Activation",  value: 2272  },
+      { name: "Revenue",     value: 512   }
+    ]
+  },
+  {
+    id: 2,
+    title: "Viral But Broke",
+    company: "TaskFlow — B2B productivity SaaS",
+    context: "TaskFlow's referral programme launched 3 months ago. Referred users are flooding in — referral traffic is up 180%. The sales team is excited. But monthly recurring revenue has barely moved and the finance team is confused.",
+    signals: [
+      { stage: "Referral",    level: "HIGH", value: 4200, unit: "referrals" },
+      { stage: "Acquisition", level: "HIGH", value: 9800, unit: "sessions"  },
+      { stage: "Revenue",     level: "LOW",  value: 88,   unit: "subscriptions" }
+    ],
+    allStages: [
+      { name: "Awareness",   value: 44000, unit: "impressions",   max: 60000  },
+      { name: "Acquisition", value: 9800,  unit: "sessions",      max: 12000  },
+      { name: "Activation",  value: 1470,  unit: "trial starts",  max: 3000   },
+      { name: "Retention",   value: 390,   unit: "active users",  max: 2000   },
+      { name: "Revenue",     value: 88,    unit: "subscriptions", max: 500    },
+      { name: "Referral",    value: 4200,  unit: "referrals",     max: 5000   }
+    ],
+    leakStage: "Revenue",
+    leakOptions: ["Activation", "Retention", "Revenue", "Referral"],
+    leakHint: "Referral is very strong, sessions are growing — but follow the money. Where does the funnel collapse?",
+    phase1Feedback: {
+      correct: "Right. Revenue is the leak. Despite 4,200 referrals and 9,800 sessions, only 88 new subscriptions were created. That is a 0.9% session-to-revenue CVR. The referred users are arriving and even starting trials — but they are not converting to paid plans.",
+      wrong: "Follow the money. Referral and Acquisition are both strong. Activation at 15% is reasonable. The collapse happens specifically at the payment step. Which stage measures that?"
+    },
+    fixOptions: [
+      { letter: "A", text: "Increase the referral reward from 20 to 50 credit to drive more referrals", reason: "Wrong direction. More referrals of the same low-converting type will not fix revenue. The incentive may already be attracting the wrong users.", correct: false },
+      { letter: "B", text: "Segment referred users by job role — compare CVR between SMB and enterprise, then redesign the referral programme to target higher-intent segments", reason: "Correct. The referral programme is likely attracting casual or wrong-fit users rather than buyers. Segmenting the referred cohort reveals whether the incentive draws tyre-kickers.", correct: true },
+      { letter: "C", text: "Extend the free trial from 14 to 30 days to give users more time to convert", reason: "Possibly useful but not the first move. If the issue is audience fit, extending the trial just delays the same problem. Diagnose the cohort first.", correct: false },
+      { letter: "D", text: "Remove the referral programme and redirect budget to paid search", reason: "Premature and reactive. The referral programme is generating traffic. The issue is the quality of referred users, not the channel itself.", correct: false }
+    ],
+    phase2Hint: "Ask: who are these referred users and why did they sign up? Are they the same profile as your paying customers?",
+    fixFeedback: "The referral programme rewards anyone who refers — but the reward structure attracts users who want the credit, not buyers. By segmenting referred users by company size, TaskFlow finds enterprise referrals convert at 4.2% but SMB referrals convert at 0.3%. The fix is to redesign the programme to target enterprise-tier users specifically.",
+    fixedStages: [
+      { name: "Referral",    value: 3100 },
+      { name: "Acquisition", value: 8200 },
+      { name: "Revenue",     value: 218  }
+    ]
+  },
+  {
+    id: 3,
+    title: "The Ghost Town",
+    company: "FitBuddy — mobile fitness app",
+    context: "FitBuddy has excellent App Store reviews and a low cost-per-install. 68% of new users complete the onboarding workout on Day 1 — a metric the product team is proud of. But by Day 30, almost nobody is still using the app.",
+    signals: [
+      { stage: "Activation", level: "HIGH", value: 6800, unit: "Day-1 completions" },
+      { stage: "Retention",  level: "LOW",  value: 680,  unit: "Day-30 actives"    }
+    ],
+    allStages: [
+      { name: "Awareness",   value: 95000, unit: "installs + impressions", max: 100000 },
+      { name: "Acquisition", value: 10000, unit: "installs",               max: 12000  },
+      { name: "Activation",  value: 6800,  unit: "D1 workouts",            max: 10000  },
+      { name: "Retention",   value: 680,   unit: "D30 actives",            max: 5000   },
+      { name: "Revenue",     value: 138,   unit: "subscriptions",          max: 2000   },
+      { name: "Referral",    value: 420,   unit: "shares",                 max: 2000   }
+    ],
+    leakStage: "Retention",
+    leakOptions: ["Acquisition", "Activation", "Retention", "Revenue"],
+    leakHint: "Activation on Day 1 is strong at 68%. But what percentage of those activated users are still present at Day 30?",
+    phase1Feedback: {
+      correct: "Correct. Day-30 retention is 10% (680 / 6,800). Only 1 in 10 users who completed their first workout is still using the app a month later. The product is good enough for a first impression but is not building a habit.",
+      wrong: "The Activation rate is actually strong — 68% of installs complete Day 1. The problem is not the first session. Look at what happens over the following 30 days."
+    },
+    fixOptions: [
+      { letter: "A", text: "Run a win-back paid campaign targeting lapsed users with a discount on the premium plan", reason: "Expensive and treats a symptom. Users lapsed because the product did not build a habit — paid re-acquisition without fixing that will churn again.", correct: false },
+      { letter: "B", text: "Design a Day 3, Day 7, and Day 14 push notification sequence tied to personalised workout streaks, with a social sharing mechanic at each milestone", reason: "Correct. Retention is a habit-formation problem. A streak mechanic with timely, personalised notifications at the critical drop-off points creates the behavioural loop the app currently lacks.", correct: true },
+      { letter: "C", text: "Add more workout content — increase the library from 80 to 200 workouts", reason: "Content volume is not the issue. Users are not returning because the habit loop is broken, not because they have run out of things to do.", correct: false },
+      { letter: "D", text: "Reduce the price of the premium plan by 40%", reason: "Revenue is not the leak. Users are not even reaching the paywall decision. Price is irrelevant until retention is solved.", correct: false }
+    ],
+    phase2Hint: "Retention is a habit-formation problem. What typically makes a fitness app sticky enough that users return without being asked?",
+    fixFeedback: "FitBuddy has an excellent first session but no habit loop. The fix is a streak system with notifications that feel personally relevant — not generic messages but personalised prompts paired with a social leaderboard. The D3, D7, D14 notification sequence targets the exact drop-off windows revealed in the cohort curve.",
+    fixedStages: [
+      { name: "Activation", value: 6800 },
+      { name: "Retention",  value: 2040 },
+      { name: "Revenue",    value: 408  }
+    ]
+  },
+  {
+    id: 4,
+    title: "High Revenue, No Return",
+    company: "LuxeHome — premium home decor e-commerce",
+    context: "LuxeHome sells high-end furniture and decor. Revenue per transaction is impressive — AOV sits at £340. But the finance team just calculated that 82% of buyers never purchase again. Customer acquisition costs are rising and LTV is dangerously low.",
+    signals: [
+      { stage: "Revenue",   level: "HIGH", value: 1240, unit: "transactions"    },
+      { stage: "Retention", level: "LOW",  value: 223,  unit: "returning buyers" }
+    ],
+    allStages: [
+      { name: "Awareness",   value: 78000, unit: "impressions",     max: 100000 },
+      { name: "Acquisition", value: 18400, unit: "sessions",        max: 25000  },
+      { name: "Activation",  value: 2944,  unit: "product views 3+",max: 5000   },
+      { name: "Retention",   value: 223,   unit: "returning buyers", max: 1500   },
+      { name: "Revenue",     value: 1240,  unit: "transactions",     max: 2000   },
+      { name: "Referral",    value: 340,   unit: "referrals",        max: 1000   }
+    ],
+    leakStage: "Retention",
+    leakOptions: ["Activation", "Revenue", "Retention", "Referral"],
+    leakHint: "Revenue transactions are strong. Where in the post-purchase journey do customers disappear?",
+    phase1Feedback: {
+      correct: "Yes. Revenue looks good but only 18% of buyers ever return (223 / 1,240). For a home decor brand where customers could genuinely return for multiple purchases, this is a massive untapped opportunity. The business is paying to acquire customers it cannot retain.",
+      wrong: "Revenue per transaction is strong and transaction volume is growing. The problem is what happens after the purchase. Which stage measures whether customers come back?"
+    },
+    fixOptions: [
+      { letter: "A", text: "Launch a loyalty programme with points on every purchase, a birthday reward, and a VIP tier at £1,000 cumulative spend", reason: "Correct. LuxeHome customers are high-value and purchase high-consideration items. A tiered loyalty programme speaks to their self-image and creates genuine incentive to return. The VIP tier rewards exactly the LTV behaviour the business needs.", correct: true },
+      { letter: "B", text: "Increase paid search budget to drive more new customer acquisitions", reason: "Wrong priority. CAC is already rising. Acquiring more single-purchase customers accelerates the problem. Fix LTV before scaling acquisition.", correct: false },
+      { letter: "C", text: "Reduce AOV by introducing a lower price-point product line", reason: "This could undermine the brand premium. The issue is repeat purchase rate, not price accessibility. Existing customers can afford to return — they are just not being given a reason to.", correct: false },
+      { letter: "D", text: "Improve the returns process to reduce friction", reason: "Useful for satisfaction but does not address the retention gap. Most non-returners probably did not have a bad experience — they were simply never brought back.", correct: false }
+    ],
+    phase2Hint: "A customer who spent £340 once is worth much more if they return. What makes a high-consideration buyer feel a relationship with a brand?",
+    fixFeedback: "LuxeHome buyers are high-intent, high-spend customers who have already proven they trust the brand. A loyalty programme with meaningful milestones creates the emotional anchoring that brings them back. The VIP tier at £1,000 is achievable in 3 purchases — realistic enough to pursue, exclusive enough to value.",
+    fixedStages: [
+      { name: "Revenue",    value: 1240 },
+      { name: "Retention",  value: 558  },
+      { name: "Referral",   value: 496  }
+    ]
+  },
+  {
+    id: 5,
+    title: "Big Audience, Wrong Audience",
+    company: "DevTools Pro — developer productivity SaaS",
+    context: "DevTools Pro went viral on social media last month. A popular tech influencer posted about the free tier and 40,000 new users signed up in a week. But paid plan conversions barely moved.",
+    signals: [
+      { stage: "Acquisition", level: "HIGH", value: 48000, unit: "sign-ups"     },
+      { stage: "Revenue",     level: "LOW",  value: 96,    unit: "paid upgrades" }
+    ],
+    allStages: [
+      { name: "Awareness",   value: 820000, unit: "impressions",    max: 1000000 },
+      { name: "Acquisition", value: 48000,  unit: "sign-ups",       max: 55000   },
+      { name: "Activation",  value: 14400,  unit: "first project",  max: 25000   },
+      { name: "Retention",   value: 2880,   unit: "weekly actives", max: 8000    },
+      { name: "Revenue",     value: 96,     unit: "paid upgrades",  max: 1000    },
+      { name: "Referral",    value: 1920,   unit: "shares",         max: 5000    }
+    ],
+    leakStage: "Revenue",
+    leakOptions: ["Activation", "Retention", "Revenue", "Referral"],
+    leakHint: "Acquisition exploded 4x. But trace the path all the way to Revenue. What is the sign-up to paid CVR?",
+    phase1Feedback: {
+      correct: "Correct. Sign-up to paid CVR is 0.2% (96 / 48,000). Even before the viral spike, it was only 0.7% (84 / 12,000). The viral moment brought in 36,000 additional sign-ups who are almost entirely non-paying. The audience is wrong for the paid product.",
+      wrong: "Activation and Retention numbers look proportional to the surge. The issue is at the very end of the funnel. Calculate paid upgrades as a percentage of sign-ups — what does that number tell you?"
+    },
+    fixOptions: [
+      { letter: "A", text: "Remove the free tier to force paid sign-ups from all new users", reason: "Dangerous. The free tier is driving viral growth. Removing it would collapse Acquisition without solving the quality problem.", correct: false },
+      { letter: "B", text: "Add upgrade prompts when users hit free-tier limits, plus a 7-day discounted trial targeted at users who have created 3 or more projects", reason: "Correct. The free-to-paid conversion problem requires hitting the right moment — after demonstrated value — and lowering the friction to try paid. Users with 3+ projects have proven they find value. That is the conversion moment.", correct: true },
+      { letter: "C", text: "Partner with more influencers to continue the viral growth momentum", reason: "More of the same low-converting traffic compounds the problem. Revenue per user is falling. Scale only what converts.", correct: false },
+      { letter: "D", text: "Build a dedicated enterprise sales team to go after large companies", reason: "Right direction long-term but slow. Enterprise sales takes months to build. The immediate problem is converting the users you already have.", correct: false }
+    ],
+    phase2Hint: "The audience that responds to a viral influencer post is not necessarily the audience that pays for a developer tool. What is the moment where a free user becomes ready to pay?",
+    fixFeedback: "The viral moment attracted curious developers, not decision-makers with budgets. The conversion fix targets users who have already demonstrated value (3+ projects) with a timely, low-friction paid trial. Upgrade prompts tied to feature limits create the right friction at the right moment — not annoying friction, but value-revealing friction that shows what the paid plan unlocks.",
+    fixedStages: [
+      { name: "Acquisition", value: 48000 },
+      { name: "Retention",   value: 3840  },
+      { name: "Revenue",     value: 288   }
+    ]
+  },
+  {
+    id: 6,
+    title: "The Silent Win",
+    company: "Nourish — meal planning subscription app",
+    context: "Nourish has remarkable retention. Month-4 cohorts still show 71% of users active — far above the category average of 30%. Users love it. NPS is 72. But word-of-mouth referrals are near zero and paid acquisition costs are rising unsustainably.",
+    signals: [
+      { stage: "Retention", level: "HIGH", value: 8200, unit: "M4 actives"        },
+      { stage: "Referral",  level: "LOW",  value: 190,  unit: "referred sign-ups"  }
+    ],
+    allStages: [
+      { name: "Awareness",   value: 62000, unit: "impressions",        max: 80000  },
+      { name: "Acquisition", value: 11500, unit: "sign-ups",           max: 15000  },
+      { name: "Activation",  value: 8280,  unit: "meal plans created", max: 12000  },
+      { name: "Retention",   value: 8200,  unit: "M4 actives",         max: 12000  },
+      { name: "Revenue",     value: 8200,  unit: "active subs",        max: 12000  },
+      { name: "Referral",    value: 190,   unit: "referred sign-ups",  max: 2000   }
+    ],
+    leakStage: "Referral",
+    leakOptions: ["Activation", "Revenue", "Retention", "Referral"],
+    leakHint: "Retention is exceptional. Revenue is healthy. But if users love this product, why are they not telling people about it?",
+    phase1Feedback: {
+      correct: "Exactly. Referral is the gap. 8,200 happy paying users — and only 190 referred sign-ups. That is a 2.3% referral rate against a market where 10% is considered strong. Satisfaction exists but advocacy is not being activated.",
+      wrong: "Retention and Revenue are both healthy — this is a well-loved product. The problem is happening after the purchase experience. Which stage captures word-of-mouth and sharing behaviour?"
+    },
+    fixOptions: [
+      { letter: "A", text: "Run a paid influencer campaign on Instagram to raise brand awareness", reason: "Addresses Awareness, not Referral. The happy users you already have are a far cheaper referral channel than influencers — if you activate them properly.", correct: false },
+      { letter: "B", text: "Launch a shareable weekly meal plan summary card for social media, and place a referral prompt at the weekly completion milestone", reason: "Correct. NPS of 72 means users are happy but sharing is not happening because there is no trigger or mechanism. The shareable card creates a natural word-of-mouth moment that is product-native, not a generic referral ask.", correct: true },
+      { letter: "C", text: "Offer existing users a £10 credit for every person they refer", reason: "Partially right — an incentive helps — but a cash credit feels transactional for a health and lifestyle brand. A product-native mechanic is more brand-congruent and likely more effective.", correct: false },
+      { letter: "D", text: "Focus on increasing the free trial conversion to grow paid subscribers first", reason: "Revenue and Retention are already strong. This does not address the referral gap — it just grows the pool of happy users who still will not refer.", correct: false }
+    ],
+    phase2Hint: "Users with NPS 72 are willing to recommend — they just have not been given a reason to do it at the right moment. When do Nourish users feel most proud of the product?",
+    fixFeedback: "Nourish users feel a personal sense of achievement each week when they complete their meal plan. That is the moment to place a referral trigger — not a generic invite-friends button buried in settings, but a shareable achievement card that users want to post because it reflects well on them. The referral is a byproduct of self-expression, which is far more powerful than a cash incentive for a wellness brand.",
+    fixedStages: [
+      { name: "Retention",   value: 8200  },
+      { name: "Referral",    value: 820   },
+      { name: "Acquisition", value: 14800 }
+    ]
+  }
+];
+
+// STATE
+var state = {
+  currentRound: 0, score: 0,
+  timeLeft: 60, timerInterval: null,
+  phase: 1,
+  selectedLeak: null, selectedFix: null,
+  fixWouldBeCorrect: false,
+  leakCorrect: false, fixCorrect: false,
+  roundComplete: false,
+  roundResults: []
+};
+
+// START SCREEN FUNNEL PREVIEW
+function buildStartPreview() {
+  var stages = ["AWARENESS","ACQUISITION","ACTIVATION","RETENTION","REVENUE","REFERRAL"];
+  var colors  = ["#2563eb","#0d9488","#d97706","#7c3aed","#16a34a","#dc2626"];
+  var container = document.getElementById("funnel-preview");
+  if (!container) return;
+  stages.forEach(function(st, i) {
+    var w = 340 - i * 36;
+    var bar = document.createElement("div");
+    bar.className = "fp-bar";
+    bar.style.cssText = "width:" + w + "px; background:" + colors[i] + "; color:white;";
+    bar.textContent = st;
+    container.appendChild(bar);
+  });
+}
+
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(function(s) { s.classList.remove("active"); });
+  document.getElementById(id).classList.add("active");
+}
+
+function startGame() {
+  state = {
+    currentRound: 0, score: 0,
+    timeLeft: 60, timerInterval: null,
+    phase: 1,
+    selectedLeak: null, selectedFix: null,
+    fixWouldBeCorrect: false,
+    leakCorrect: false, fixCorrect: false,
+    roundComplete: false,
+    roundResults: []
+  };
+  showScreen("game-screen");
+  loadRound(0);
+}
+
+function restartGame() { startGame(); }
+
+function loadRound(idx) {
+  var round = ROUNDS[idx];
+  state.phase = 1;
+  state.selectedLeak = null;
+  state.selectedFix = null;
+  state.fixWouldBeCorrect = false;
+  state.leakCorrect = false;
+  state.fixCorrect = false;
+  state.roundComplete = false;
+  state.timeLeft = 60;
+
+  document.getElementById("round-badge").textContent = "Round " + (idx+1) + " / " + ROUNDS.length;
+  document.getElementById("round-title").textContent = round.title;
+  document.getElementById("score-display").textContent = state.score;
+  buildProgressDots(idx);
+
+  document.getElementById("ctx-eyebrow").textContent = round.company;
+  document.getElementById("ctx-title").textContent   = round.title;
+  document.getElementById("ctx-body").textContent    = round.context;
+
+  var sr = document.getElementById("signal-row");
+  sr.innerHTML = "";
+  round.signals.forEach(function(sig, i) {
+    if (i > 0) {
+      var arrow = document.createElement("div");
+      arrow.className = "signal-arrow";
+      arrow.textContent = "\u2192";
+      sr.appendChild(arrow);
+    }
+    var chip = document.createElement("div");
+    chip.className = "signal-chip " + sig.level.toLowerCase();
+    chip.innerHTML = (sig.level === "HIGH" ? "\u2191" : "\u2193") + " " + sig.stage + ": " + sig.level;
+    sr.appendChild(chip);
+  });
+
+  buildFunnel(round.allStages, null);
+  showPhase1(round);
+  updatePhaseIndicator(1);
+  hideFeedback();
+  document.getElementById("btn-next").classList.remove("show");
+
+  clearInterval(state.timerInterval);
+  updateTimerDisplay(60);
+  state.timerInterval = setInterval(timerTick, 1000);
+}
+
+function buildFunnel(stages, leakStage) {
+  var container = document.getElementById("funnel-stages");
+  container.innerHTML = "";
+
+  stages.forEach(function(st, i) {
+    var col = STAGE_COLORS[st.name] || "#2563eb";
+    var pct = Math.round((st.value / st.max) * 100);
+    var isLeak = st.name === leakStage;
+
+    var div = document.createElement("div");
+    div.className = "funnel-stage" + (isLeak ? " leak" : "");
+    div.id = "stage-" + st.name;
+    div.style.borderColor = isLeak ? "#ef4444" : col + "44";
+
+    var rateText = "";
+    if (i > 0 && stages[i-1].value > 0) {
+      var rate = ((st.value / stages[i-1].value) * 100).toFixed(1);
+      rateText = rate + "% from " + stages[i-1].name;
+    }
+
+    div.innerHTML =
+      "<div class='stage-header' style='background:" + col + "22'>" +
+        "<span class='stage-name' style='color:" + col + "'>" + st.name + "</span>" +
+        "<span class='stage-value' style='color:" + col + "'>" + formatNum(st.value) + "</span>" +
+      "</div>" +
+      "<div class='stage-bar-wrap'>" +
+        "<div class='stage-bar-bg'>" +
+          "<div class='stage-bar-fill' style='width:" + pct + "%; background:" + col + "'></div>" +
+        "</div>" +
+      "</div>" +
+      "<div class='stage-meta'>" +
+        "<span class='stage-rate'>" + st.unit + "</span>" +
+        (rateText ? "<span class='stage-rate' style='color:#94a3b8'>" + rateText + "</span>" : "") +
+      "</div>";
+
+    container.appendChild(div);
+
+    if (isLeak && i < stages.length - 1) {
+      var arrow = document.createElement("div");
+      arrow.className = "leak-arrow";
+      arrow.textContent = "\u26A0";
+      container.appendChild(arrow);
+    }
+  });
+}
+
+function updateFunnelStages(fixedStages, allStages) {
+  fixedStages.forEach(function(fix) {
+    var el = document.getElementById("stage-" + fix.name);
+    if (!el) return;
+    var orig = allStages.find(function(s) { return s.name === fix.name; });
+    var col = STAGE_COLORS[fix.name] || "#2563eb";
+    var pct = Math.round((fix.value / orig.max) * 100);
+
+    el.classList.remove("leak");
+    el.classList.add("fixed");
+    el.style.borderColor = "#22c55e44";
+
+    var fill = el.querySelector(".stage-bar-fill");
+    if (fill) fill.style.width = pct + "%";
+
+    var valEl = el.querySelector(".stage-value");
+    if (valEl) animateNumber(valEl, orig.value, fix.value, 1000);
+  });
+}
+
+function animateNumber(el, from, to, duration) {
+  var start = performance.now();
+  var range = to - from;
+  function step(ts) {
+    var t = Math.min((ts - start) / duration, 1);
+    var ease = 1 - Math.pow(1 - t, 3);
+    el.textContent = formatNum(Math.round(from + range * ease));
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function formatNum(n) {
+  if (n >= 1000000) return (n/1000000).toFixed(1) + "M";
+  if (n >= 10000)   return (n/1000).toFixed(0) + "k";
+  if (n >= 1000)    return (n/1000).toFixed(1) + "k";
+  return String(n);
+}
+
+function showPhase1(round) {
+  document.getElementById("phase1-area").style.display = "block";
+  document.getElementById("phase2-area").style.display = "none";
+  document.getElementById("phase1-hint").textContent = round.leakHint;
+
+  var container = document.getElementById("leak-options");
+  container.innerHTML = "";
+  round.leakOptions.forEach(function(opt) {
+    var col = STAGE_COLORS[opt] || "#2563eb";
+    var card = document.createElement("div");
+    card.className = "option-card";
+    card.innerHTML =
+      "<div style='display:flex;align-items:center;gap:10px'>" +
+        "<div style='width:12px;height:12px;border-radius:50%;background:" + col + ";flex-shrink:0'></div>" +
+        "<span class='option-text' style='font-weight:600'>" + opt + "</span>" +
+      "</div>" +
+      "<div class='option-reason' id='lr-" + opt + "'></div>";
+    card.onclick = (function(o, c) { return function() { selectLeak(o, c); }; })(opt, card);
+    container.appendChild(card);
+  });
+
+  document.getElementById("btn-confirm-leak").disabled = true;
+}
+
+function selectLeak(stage, card) {
+  if (state.roundComplete) return;
+  document.querySelectorAll("#leak-options .option-card").forEach(function(c) { c.classList.remove("selected"); });
+  card.classList.add("selected");
+  state.selectedLeak = stage;
+  document.getElementById("btn-confirm-leak").disabled = false;
+}
+
+function confirmLeak() {
+  if (!state.selectedLeak) return;
+  var round = ROUNDS[state.currentRound];
+  var correct = state.selectedLeak === round.leakStage;
+  state.leakCorrect = correct;
+
+  document.querySelectorAll("#leak-options .option-card").forEach(function(card) {
+    var nm = card.querySelector(".option-text").textContent.trim();
+    if (nm === round.leakStage) {
+      card.classList.add("correct");
+      var r = card.querySelector(".option-reason");
+      r.textContent = correct ? round.phase1Feedback.correct : ("Correct answer. " + round.phase1Feedback.correct);
+      r.style.display = "block";
+    } else if (nm === state.selectedLeak && !correct) {
+      card.classList.add("wrong");
+      var r2 = card.querySelector(".option-reason");
+      r2.textContent = round.phase1Feedback.wrong;
+      r2.style.display = "block";
+    }
+  });
+
+  document.getElementById("btn-confirm-leak").disabled = true;
+  buildFunnel(round.allStages, round.leakStage);
+
+  if (correct) {
+    var bonus = Math.floor(state.timeLeft * 0.5);
+    var pts = 50 + bonus;
+    addScore(pts);
+    showToast("+" + pts + " pts — Correct diagnosis!", "good");
+  } else {
+    showToast("Incorrect — but now you can see why", "bad");
+  }
+
+  setTimeout(function() {
+    updatePhaseIndicator(2);
+    document.getElementById("phase1-area").style.display = "none";
+    document.getElementById("phase2-area").style.display = "block";
+    showPhase2(round);
+  }, correct ? 1400 : 2200);
+}
+
+function showPhase2(round) {
+  document.getElementById("phase2-hint").textContent = round.phase2Hint;
+  var container = document.getElementById("fix-options");
+  container.innerHTML = "";
+
+  round.fixOptions.forEach(function(opt, i) {
+    var card = document.createElement("div");
+    card.className = "option-card";
+    card.innerHTML =
+      "<div style='display:flex;gap:10px;align-items:flex-start'>" +
+        "<span class='option-letter'>" + opt.letter + "</span>" +
+        "<div>" +
+          "<div class='option-text'>" + opt.text + "</div>" +
+          "<div class='option-reason' id='fr-" + i + "'>" + opt.reason + "</div>" +
+        "</div>" +
+      "</div>";
+    card.onclick = (function(idx, isC, c) { return function() { selectFix(idx, isC, c); }; })(i, opt.correct, card);
+    container.appendChild(card);
+  });
+
+  document.getElementById("btn-confirm-fix").disabled = true;
+}
+
+function selectFix(idx, isCorrect, card) {
+  if (state.roundComplete) return;
+  document.querySelectorAll("#fix-options .option-card").forEach(function(c) { c.classList.remove("selected"); });
+  card.classList.add("selected");
+  state.selectedFix = idx;
+  state.fixWouldBeCorrect = isCorrect;
+  document.getElementById("btn-confirm-fix").disabled = false;
+}
+
+function confirmFix() {
+  if (state.selectedFix === null) return;
+  var round = ROUNDS[state.currentRound];
+  var correct = state.fixWouldBeCorrect;
+  state.fixCorrect = correct;
+  state.roundComplete = true;
+  clearInterval(state.timerInterval);
+
+  document.querySelectorAll("#fix-options .option-card").forEach(function(card, i) {
+    var opt = round.fixOptions[i];
+    if (opt.correct) {
+      card.classList.add("correct");
+      card.querySelector(".option-reason").style.display = "block";
+    } else if (i === state.selectedFix && !opt.correct) {
+      card.classList.add("wrong");
+      card.querySelector(".option-reason").style.display = "block";
+    }
+  });
+
+  document.getElementById("btn-confirm-fix").disabled = true;
+
+  var pts = 0;
+  if (correct) {
+    var bonus = Math.floor(state.timeLeft * 1.5);
+    pts = 100 + bonus;
+    addScore(pts);
+    showToast("+" + pts + " pts — Right fix!", "good");
+  } else {
+    showToast("Not the best move — check the explanation", "bad");
+  }
+
+  state.roundResults.push({
+    round: round.id,
+    title: round.title,
+    leakCorrect: state.leakCorrect,
+    fixCorrect: correct,
+    points: (state.leakCorrect ? 50 : 0) + pts
+  });
+
+  if (correct) {
+    setTimeout(function() { updateFunnelStages(round.fixedStages, round.allStages); }, 500);
+  }
+
+  var delay = correct ? 1000 : 800;
+  setTimeout(function() {
+    showFeedback(correct, round.fixFeedback);
+    updateProgressDot(state.currentRound, (correct && state.leakCorrect) ? "done" : "failed");
+    var btnNext = document.getElementById("btn-next");
+    btnNext.classList.add("show");
+    if (state.currentRound === ROUNDS.length - 1) {
+      btnNext.textContent = "View Results \u2192";
+    }
+  }, delay);
+}
+
+function showFeedback(correct, text) {
+  var banner = document.getElementById("feedback-banner");
+  banner.className = "feedback-banner show " + (correct ? "correct" : "wrong");
+  document.getElementById("feedback-head").textContent = correct ? "\u2713 Correct fix applied" : "\u2717 Not the optimal move";
+  document.getElementById("feedback-body").textContent = text;
+}
+
+function hideFeedback() {
+  document.getElementById("feedback-banner").className = "feedback-banner";
+}
+
+function nextRound() {
+  if (state.currentRound >= ROUNDS.length - 1) { showResults(); return; }
+  var overlay = document.getElementById("transition-overlay");
+  var next = state.currentRound + 1;
+  document.getElementById("transition-text").textContent = "Round " + (next+1) + " \u2014 " + ROUNDS[next].title;
+  overlay.classList.add("show");
+  setTimeout(function() {
+    state.currentRound = next;
+    loadRound(next);
+    overlay.classList.remove("show");
+  }, 1000);
+}
+
+function timerTick() {
+  state.timeLeft--;
+  updateTimerDisplay(state.timeLeft);
+  if (state.timeLeft <= 0) {
+    clearInterval(state.timerInterval);
+    handleTimeout();
+  }
+}
+
+function updateTimerDisplay(t) {
+  var el = document.getElementById("timer-display");
+  el.textContent = t;
+  el.className = "timer-display" + (t <= 10 ? " danger" : t <= 20 ? " warn" : "");
+}
+
+function handleTimeout() {
+  if (state.roundComplete) return;
+  state.roundComplete = true;
+  var round = ROUNDS[state.currentRound];
+
+  document.getElementById("btn-confirm-leak").disabled = true;
+  document.getElementById("btn-confirm-fix").disabled = true;
+
+  document.querySelectorAll("#leak-options .option-card").forEach(function(card) {
+    if (card.querySelector(".option-text").textContent.trim() === round.leakStage) {
+      card.classList.add("correct");
+    }
+  });
+  document.querySelectorAll("#fix-options .option-card").forEach(function(card, i) {
+    if (round.fixOptions[i] && round.fixOptions[i].correct) card.classList.add("correct");
+  });
+
+  state.roundResults.push({ round: round.id, title: round.title, leakCorrect: false, fixCorrect: false, points: 0 });
+
+  var correctFix = round.fixOptions.find(function(f) { return f.correct; });
+  var banner = document.getElementById("feedback-banner");
+  banner.className = "feedback-banner show timeout";
+  document.getElementById("feedback-head").textContent = "\u23F1 Time is up";
+  document.getElementById("feedback-body").textContent = "The correct diagnosis was " + round.leakStage + " and the right fix was: " + (correctFix ? correctFix.text : "") + ". " + round.fixFeedback;
+
+  updateProgressDot(state.currentRound, "failed");
+  var btnNext = document.getElementById("btn-next");
+  btnNext.classList.add("show");
+  if (state.currentRound === ROUNDS.length - 1) btnNext.textContent = "View Results \u2192";
+}
+
+function addScore(pts) {
+  var prev = state.score;
+  state.score += pts;
+  var el = document.getElementById("score-display");
+  animateNumber(el, prev, state.score, 600);
+}
+
+function buildProgressDots(currentIdx) {
+  var container = document.getElementById("progress-dots");
+  container.innerHTML = "";
+  ROUNDS.forEach(function(_, i) {
+    var dot = document.createElement("div");
+    dot.className = "pdot" + (i === currentIdx ? " current" : "");
+    dot.id = "pdot-" + i;
+    container.appendChild(dot);
+  });
+}
+
+function updateProgressDot(idx, status) {
+  var dot = document.getElementById("pdot-" + idx);
+  if (dot) { dot.classList.remove("current"); dot.classList.add(status); }
+}
+
+function updatePhaseIndicator(phase) {
+  state.phase = phase;
+  var pip1 = document.getElementById("pip-1");
+  var pip2 = document.getElementById("pip-2");
+  if (phase === 1) {
+    pip1.className = "phase-pip active";
+    pip2.className = "phase-pip";
+  } else {
+    pip1.className = "phase-pip done";
+    pip2.className = "phase-pip active";
+  }
+}
+
+var toastTimer = null;
+function showToast(msg, type) {
+  var t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast show " + (type === "good" ? "good-toast" : "bad-toast");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { t.classList.remove("show"); }, 2500);
+}
+
+function showResults() {
+  clearInterval(state.timerInterval);
+  showScreen("results-screen");
+
+  var maxScore = ROUNDS.length * 250;
+  var pct = Math.round((state.score / maxScore) * 100);
+
+  var grade, gradeCol, gradeText;
+  if (pct >= 85) {
+    grade = "Growth Lead"; gradeCol = "#16a34a";
+    gradeText = "You diagnosed every leak and picked the right fix with speed. That is practitioner-level thinking.";
+  } else if (pct >= 65) {
+    grade = "Growth Analyst"; gradeCol = "#2563eb";
+    gradeText = "Strong diagnostic instincts. A few fixes were not optimal — review the reasoning on those rounds.";
+  } else if (pct >= 45) {
+    grade = "Junior Marketer"; gradeCol = "#d97706";
+    gradeText = "Good start. You found some leaks but the fixes need more strategic thinking. Play again.";
+  } else {
+    grade = "Apprentice"; gradeCol = "#dc2626";
+    gradeText = "The first time through is tough. Review the feedback on each round and try again.";
+  }
+
+  document.getElementById("result-title").textContent = grade;
+  document.getElementById("result-sub").textContent   = gradeText;
+
+  var scoreEl = document.getElementById("result-score");
+  animateNumber(scoreEl, 0, state.score, 1200);
+
+  document.getElementById("result-max").textContent = "out of ~" + maxScore + " possible points";
+
+  var badge = document.getElementById("grade-badge");
+  badge.textContent = grade.toUpperCase();
+  badge.style.background = gradeCol + "22";
+  badge.style.border = "1px solid " + gradeCol + "66";
+  badge.style.color  = gradeCol;
+
+  var breakdown = document.getElementById("results-breakdown");
+  breakdown.innerHTML = "";
+  state.roundResults.forEach(function(r) {
+    var status = (r.leakCorrect && r.fixCorrect) ? "good" : (r.points > 0 ? "warn" : "bad");
+    var row = document.createElement("div");
+    row.className = "rb-row";
+    row.innerHTML =
+      "<div class='rb-label'>" +
+        "<strong>Round " + r.round + ":</strong> " + r.title +
+        "<div style='font-size:11px;color:#64748b;margin-top:2px'>" +
+          (r.leakCorrect ? "\u2713 Correct diagnosis" : "\u2717 Missed diagnosis") +
+          " &nbsp;&middot;&nbsp; " +
+          (r.fixCorrect  ? "\u2713 Right fix" : "\u2717 Wrong fix") +
+        "</div>" +
+      "</div>" +
+      "<div class='rb-score " + status + "'>" + (r.points > 0 ? "+" + r.points : "0") + " pts</div>";
+    breakdown.appendChild(row);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  buildStartPreview();
+});
+</script>
+</body>
+</html>
